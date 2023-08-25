@@ -1,4 +1,7 @@
-﻿using CommandAssistant;
+﻿// Comment this line out to use a non-static version of the Args class
+#define USING_STATIC_ARGS
+
+using CommandAssistant;
 
 namespace CommandAssistantTest;
 
@@ -7,38 +10,94 @@ internal class Program
     //public static ArgsD Args = new();
     static void Main(string[] args)
     {
-        // Just a test case
-        //args = new string[] { "-h" };
+        // A test case (Overrides input arguments)
+        //args = new string[] { "-T", "94", "69" };
+
+        // Change the help message that is presented when args information is listed
         CommandHelp.SetHelpMessage("Usage: <args> <search path>");
-        ArgumentProcessor.ProcessArguments(args, typeof(ArgsD));
+
+#if USING_STATIC_ARGS
+        ArgumentProcessor.ProcessArguments(args, typeof(Args));
+#else
+        ArgumentProcessor.ProcessArguments<Args>(args);
+#endif
     }
 
-    public static class ArgsD
+#if USING_STATIC_ARGS
+    public static class Args
+#else
+    public class Args
+#endif
     {
-        // Switches
-        [CommandArg("--some-str/-s", "This is a switch, for an arg", nameof(LStr_Helper))]
-        public static string LStr = string.Empty;
+        /*
+         * Switches should always be static. It may be more difficult to reset them to their default state, but makes them
+         * more accessible throughout the program
+         *
+         * CommandArg:
+         *      Switch          : The format of the switch (Should always be set --longhand/-shorthand)
+         *      Description     : The description of what the switch does (Can contain newlines, but is best if "\t\t" is placed before them)
+         *      Handler         : The name of the *static void* method for handling the argument
+         *      *Values after   : The number of arguments after the switch that should be passed to the handler method (-1 = disabled, -2 = until the next switch)
+         *      *Argument type  : The parameter type for the handler method
+         *  
+         *  *  = Experimental
+         *  ** = Will not work
+         *  
+         *  Currently supported argument types:
+         *      string, (u)int, (u)long, (u)short, and byte
+         *      
+         *  Currently supported "array" types:
+         *      string, (u)int, (u)long, (u)short, and byte
+         *      (Bool will not be supported as it would be redundant to have the library just return true when the switch already specifies it)
+         *  It's "array" because the parameters will not be passed to the method as an array. 
+         *  This does mean that '-2' for the "ValuesAfter" parameter will not work yet. But specifying a number
+         *  and manually adding the parameters will work. See "TypeTest_Helper" for an example.
+         */
 
-        [CommandArg("-b", "This is a test for only shorthand switches", nameof(LBool_Helper))]
+        [CommandArg("--some-str/-s",                // Switch name
+            "This is a switch, for an arg",         // Description
+            nameof(LStr_Helper),                    // Handler method
+            1,                                      // Arg count
+            typeof(string))]                        // Arg type
+        public static string LStr = string.Empty;   // Field
+
+        [CommandArg("-b",
+            "This is a test for only shorthand switches",
+            nameof(LBool_Helper))]
         public static bool LBool = false;
 
-        [CommandArg("--bool-value", "This is a test for only longhand switches", nameof(LBool2_Helper))]
+        [CommandArg("--bool-value",
+            "This is a test for only longhand switches",
+            nameof(LBool2_Helper))]
         public static bool LBool2 = false;
 
+        [CommandArg("--type-test/-T",
+            "This is a type conversion test",
+            nameof(TypeTest_Helper),
+            2,
+            typeof(int[]))]
+        public static int TypeTest = 0;
+
         // Command handlers
-        public static void LStr_Helper(string[] arg)
+        public static void LStr_Helper(string arg)
         {
-            Console.WriteLine("[METHOD] Solving for LStr" + string.Join(", ", arg));
+            Console.WriteLine("[METHOD] Solving for LStr: " + arg);
         }
 
-        public static void LBool_Helper(string[] arg)
+        public static void LBool_Helper()
         {
-            Console.WriteLine("[METHOD] Solving for LBool" + string.Join(", ", arg));
+            Console.WriteLine("[METHOD] Solving for LBool");
         }
 
-        public static void LBool2_Helper(string[] arg)
+        public static void LBool2_Helper()
         {
-            Console.WriteLine("[METHOD] Solving for LBool2" + string.Join(", ", arg));
+            Console.WriteLine("[METHOD] Solving for LBool2");
+        }
+
+        // ValuesAfter: 2
+        public static void TypeTest_Helper(int a, int b)
+        {
+            Console.WriteLine($"[METHOD] Solving for TypeTest: {a}, {b}");
         }
     }
 }

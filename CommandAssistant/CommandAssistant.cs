@@ -1,6 +1,5 @@
 ﻿using Spectre.Console;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 
 namespace CommandAssistant;
 
@@ -11,6 +10,7 @@ public class CommandArgAttribute : Attribute
     public string Description { get; }
     public string StaticArgumentHandlerMethodName { get; }
     public int ValuesAfter { get; }
+    public Type? ArgumentType { get; }
 
     /// <summary>
     /// Provides argument helper services to a field or property.
@@ -19,7 +19,7 @@ public class CommandArgAttribute : Attribute
     /// <param name="description"></param>
     /// <param name="argumentHandler"></param>
     /// <exception cref="ArgumentException"></exception>
-    public CommandArgAttribute(string switchLabel, string description, string argumentHandler, int valuesAfter = -1)
+    public CommandArgAttribute(string switchLabel, string description, string argumentHandler, int valuesAfter = -1, Type? argumentType = null)
     {
         if (switchLabel is "" or null)
             throw new ArgumentException("Switch label must have a value (--long-name/-s)");
@@ -43,8 +43,28 @@ public class CommandArgAttribute : Attribute
         StaticArgumentHandlerMethodName = argumentHandler;
         ValuesAfter = valuesAfter;
 
+        //if (ArgumentType is not null && !ArgumentType.IsArray)
+        //    throw new ArgumentException("Only arrays or no input parameters are supported as of right now");
+        ArgumentType = argumentType;
+
         CommandHelp.SwitchInformation.Add(switchLabel, description);
     }
+}
+
+internal class ArgStorage
+{
+    internal ArgStorage(MethodInfo method, Type? type, string[] args, string forArg)
+    {
+        Method = method;
+        Type = type;
+        Args = args;
+        ForArg = forArg;
+    }
+
+    internal MethodInfo Method { get; private set; }
+    internal Type? Type { get; private set; }
+    internal string[] Args { get; private set; }
+    internal string ForArg { get; private set; }
 }
 
 public static class ArgumentProcessor
@@ -69,50 +89,44 @@ public static class ArgumentProcessor
     public static string[] ProcessArguments<T>(string[] args)
         => _processArguments(args, typeof(T));
 
-    internal static string[] _processArguments(string[] args, Type T)
+    internal static string[] _processArguments(string[] a, Type T)
     {
         RefreshActiveFields(T);
 
-        if (args.Length is 0 || args[0] is "-h" or "--help")
+        List<string> args = a.ToList();
+
+        if (args.Count is 0 || args[0] is "-h" or "--help")
         {
-            CommandHelp.GetHelpInfo(args);
+            CommandHelp.GetHelpInfo(a);
 
             if (ArgConfig.QuitAfterPrintingHelp)
                 Environment.Exit(0);
-            return args;
+            return a;
         }
 
         List<string> unknownSwitches = new();
-        List<KeyValuePair<MethodInfo, string[]>> methodsToInvoke = new();
+        List<ArgStorage> methodsToInvoke = new();
 
         int i = 0;
-        void RemArg()
+        void RemArg(int count = 1)
         {
-            if (args is null || i is < 0 || i >= args.Length)
+            if (count is 0)
                 return;
 
-            string[] result = new string[args.Length - 1];
-            int targetIndex = 0;
-
-            for (int sourceIndex = 0; sourceIndex < args.Length; sourceIndex++)
-            {
-                if (sourceIndex == i)
-                    continue;
-
-                result[targetIndex] = args[sourceIndex];
-                targetIndex++;
-            }
-
-            args = result;
-            i--;
+            for (; count > 0; count--)
+                args.RemoveAt(i);
+            //i--;
         }
 
         // Start parsing the arguments in args
-        for (; i < args.Length; i++)
+        for (; i < args.Count; i++)
         {
             string arg = args[i];
             if (arg is "--")
                 break;
+
+            if (!arg.StartsWith('-'))
+                continue;
 
             //Console.WriteLine(arg);
             CommandHelp.SwitchExists(arg, out string? swch);
@@ -129,12 +143,30 @@ public static class ArgumentProcessor
                 if (!attr.Switch.Contains(arg))
                     continue;
 
-                // Get the specified number of arguments from args (-1 means disabled) (might add -2 "for continue till next switch")
-                if (i + attr.ValuesAfter + 1 > args.Length)
+                // Get the specified number of arguments from args (-1 means disabled) (might add -2 for "continue till next switch")
+                if (i + attr.ValuesAfter + 1 > args.Count)
                     DllUtils.Log($"Insufficient argument count for switch '{arg}'", 3);
 
-                string[] readyArgs = attr.ValuesAfter is not -1 ? args[(i + 1)..(i + attr.ValuesAfter)] : Array.Empty<string>();
-                methodsToInvoke.Add(new(DllUtils.GetMethod(T, attr.StaticArgumentHandlerMethodName), readyArgs));
+                string[] readyArgs = Array.Empty<string>();
+                if (attr.ValuesAfter is not -1)
+                {
+                    a = args.ToArray();
+                    if (attr.ValuesAfter is -2)
+                    {
+                        List<string> tmp = new();
+                        for (int t = i; t < i; t++)
+                        {
+                            if (!args[x].StartsWith('-')) 
+                                tmp.Add(args[x]);
+                        }
+                        readyArgs = tmp.ToArray();
+                    }
+                    else
+                        readyArgs = a[(i + 1)..(i + attr.ValuesAfter + 1)];
+                    RemArg(readyArgs.Length);
+                }
+
+                methodsToInvoke.Add(new(DllUtils.GetMethod(T, attr.StaticArgumentHandlerMethodName), attr.ArgumentType, readyArgs, arg));
                 break;
             }
             RemArg();
@@ -143,16 +175,51 @@ public static class ArgumentProcessor
         if (unknownSwitches.Count is > 0)
         {
             foreach (string str in unknownSwitches)
-                AnsiConsole.MarkupLine($"Unknown switch '[red]{str}[/]'");
+                DllUtils.WriteLine($"Unknown switch '[red]{str}[/]'");
             if (ArgConfig.QuitOnError)
                 Environment.Exit(1);
-            return args;
+            return args.ToArray();
         }
 
-        foreach (var methodPair in methodsToInvoke)
-            methodPair.Key.Invoke(null, new object[] { methodPair.Value });
+        // Method invocation and type handling
+        foreach (var AS in methodsToInvoke)
+        {
+            if (AS.Type is null)
+                _ = AS.Method.Invoke(null, null);
+            else
+            {
+                // Arrays
+                if (AS.Type.IsArray)
+                    if (AS.Type.IsAssignableFrom(AS.Type))
+                    {
+                        try
+                        {
+                            Array typeCastedArray = Array.CreateInstance(AS.Type, AS.Args.Length);
+                            Array.Copy(AS.Args, typeCastedArray, AS.Args.Length);
+                            AS.Method.Invoke(null, new object[] { typeCastedArray });
+                        }
+                        catch
+                        {
+                            List<object> obj = new();
+                            foreach (var item in DllUtils.CastObjects(AS))
+                                obj.Add(item);
 
-        return args;
+                            AS.Method.Invoke(null, obj.ToArray());
+                        }
+                    }
+                    else
+                        AS.Method.Invoke(null, new object[] { DllUtils.CastObjects(AS) });
+                // Non-arrays
+                else
+                    foreach (string str in AS.Args)
+                        if (AS.Type.IsAssignableFrom(str.GetType()))
+                            AS.Method.Invoke(null, new object[] { Convert.ChangeType(str, AS.Type) });
+                        else
+                            AS.Method.Invoke(null, new object[] { DllUtils.CastObject(AS) });
+            }
+        }
+
+        return args.ToArray();
     }
 
     internal static void RefreshActiveFields(Type type)
@@ -265,20 +332,20 @@ public static class CommandHelp
     public static void GetHelpInfo(string[] args)
     {
         SwitchInformation.Add("--help/-h", "Displays this help information (--help/-h <arg(s)>)");
-        Console.WriteLine(HelpMessage);
 
-        bool showAll = args.Length is 1;
+        bool showAll = args.Length is < 2;
 
         List<string> unknownArgs = new();
 
         void TryPrintSwitchInfo(string arg)
         {
             if (GetHelpMessage(arg, out string description, out string fullKey))
-                AnsiConsole.MarkupLine($"\t[red]{fullKey}[/]: {description}");
+                DllUtils.WriteLine($"\t[red]{fullKey}[/]: {description}");
             else
                 unknownArgs.Add(arg);
         }
 
+        Console.WriteLine(HelpMessage);
         if (showAll)
             foreach (string arg in SwitchInformation.Keys)
                 TryPrintSwitchInfo(arg);
@@ -291,7 +358,7 @@ public static class CommandHelp
                         TryPrintSwitchInfo("-" + args[i][x]);
 
         foreach (string unknown in unknownArgs)
-            AnsiConsole.MarkupLine($"Unknown switch '[red]{unknown}[/]'");
+            DllUtils.WriteLine($"Unknown switch '[red]{unknown}[/]'");
     }
 
     public static void SetHelpMessage(string message)
@@ -308,11 +375,94 @@ internal static class DllUtils
     {
         ArgConfig.LogFunctionOverride(message, severity, logAndExit, showHelpOnCrash);
     }
+
+    public static void WriteLine(string line)
+    {
+        if (ArgConfig.PrintWithColor)
+            AnsiConsole.MarkupLine(line);
+        else
+            Console.WriteLine(line.EscapeMarkup());
+    }
+
+    internal static object CastObject(ArgStorage AS)
+        => _CastObject(AS.Args[0], AS.Type, AS.ForArg);
+
+    internal static object[] CastObjects(ArgStorage AS)
+    {
+        List<object> obs = new();
+        for (int i = 0; i < AS.Args.Length; i++)
+        {
+            obs.Add(_CastObject(AS.Args[i], AS.Type, AS.ForArg));
+        }
+
+        return obs.ToArray();
+    }
+
+    private static object _CastObject(string a, Type t, string forArg)
+    {
+        object output = new();
+
+        Type? T = t.IsArray ? t.GetElementType() : t;
+
+        if (T == typeof(long))
+        {
+            if (long.TryParse(a, out long l))
+                output = l;
+            else
+                Log($"Malformed long input for '[red]{forArg}[/]'");
+        }
+        else if (T == typeof(ulong))
+        {
+            if (ulong.TryParse(a, out ulong ul))
+                output = ul;
+            else
+                Log($"Malformed ulong input for '[red]{forArg}[/]'");
+        }
+        else if (T == typeof(int))
+        {
+            if (int.TryParse(a, out int i))
+                output = i;
+            else
+                Log($"Malformed int input for '[red]{forArg}[/]'");
+        }
+        else if (T == typeof(uint))
+        {
+            if (int.TryParse(a, out int ui))
+                output = ui;
+            else
+                Log($"Malformed uint input for '[red]{forArg}[/]'");
+        }
+        else if (T == typeof(short))
+        {
+            if (int.TryParse(a, out int s))
+                output = s;
+            else
+                Log($"Malformed uint input for '[red]{forArg}[/]'");
+        }
+        else if (T == typeof(ushort))
+        {
+            if (int.TryParse((string)a, out int us))
+                output = us;
+            else
+                Log($"Malformed uint input for '[red]{forArg}[/]'");
+        }
+        else if (T == typeof(byte))
+        {
+            if (int.TryParse(a, out int b))
+                output = b;
+            else
+                Log($"Malformed uint input for '[red]{forArg}[/]'");
+        }
+        else
+            throw new Exception($"Invalid data type ({T})");
+
+        return output;
+    }
 }
 
 public static class ArgConfig
 {
-    private static readonly string AppName = Assembly.GetEntryAssembly().GetName().Name ?? "app";
+    private static readonly string AppName = Assembly.GetEntryAssembly()?.GetName().Name ?? "app";
 
     /// <summary>
     /// Specifies for the app to exit after printing help information on a command/switch
@@ -325,6 +475,11 @@ public static class ArgConfig
     public static bool QuitOnError = true;
 
     /// <summary>
+    /// Specifies for the DLL to print with color (Via Spectre.Console | Otherwise uses System.Console)
+    /// </summary>
+    public static bool PrintWithColor = true;
+
+    /// <summary>
     /// Specifies for the app to allow the same arg multiple times (It will process and run the handler method each time the arg is used)
     /// </summary>
     public static bool AllowMultiArg = true;
@@ -332,9 +487,10 @@ public static class ArgConfig
     // Meant to be overridden in the application (Allows for different error messages while keeping the input arguments)
     public static Action<string, byte, bool, bool> LogFunctionOverride { get; set; } = DefaultLogFunction;
 
+    // The default function to be used when logging
     private static void DefaultLogFunction(string message, byte severity, bool logAndExit, bool showHelpOnCrash)
     {
-        AnsiConsole.MarkupLine($"{AppName}: [" +
+        DllUtils.WriteLine($"{AppName}: [" +
             $"{(severity is 1 ? "white" : (severity is 2 ? "yellow" : "red"))}" +
             $"]{(severity is 1 ? "message" : (severity is 2 ? "warning" : "fatal"))}[/]: " +
             $"{message}");
