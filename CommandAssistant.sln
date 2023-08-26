@@ -3,9 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33829.357
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommandAssistant", "CommandAssistant\CommandAssistant.csproj", "{F761DBF9-9786-496A-9C95-0B38A0EB4283}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CommandAssistant", "CommandAssistant\CommandAssistant.csproj", "{F761DBF9-9786-496A-9C95-0B38A0EB4283}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommandAssistantTest", "CommandAssistantTest\CommandAssistantTest.csproj", "{96057758-F590-43D6-B4EA-EE3338A8493C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CommandAssistantTest", "CommandAssistantTest\CommandAssistantTest.csproj", "{96057758-F590-43D6-B4EA-EE3338A8493C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0B4D17D7-FFD0-4CF4-ACD2-88F9673A5B90}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
