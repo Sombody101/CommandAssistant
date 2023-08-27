@@ -454,7 +454,7 @@ internal static class DllUtils
                 Log($"Malformed uint input for '[red]{forArg}[/]'");
         }
         else
-            throw new UnsuportedDataTypeException($"Invalid data type ({T})");
+            throw new UnsupportedDataTypeException($"Invalid data type ({T})");
 
         return output;
     }

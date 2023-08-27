@@ -24,9 +24,9 @@ public class MissingSwitchHandlerException : Exception
     }
 }
 
-public class UnsuportedDataTypeException : Exception
+public class UnsupportedDataTypeException : Exception
 {
-    public UnsuportedDataTypeException(string message)
+    public UnsupportedDataTypeException(string message)
         : base(message)
     {
     }
