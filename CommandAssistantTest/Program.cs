@@ -48,10 +48,13 @@ internal class Program
          *      
          *  Currently supported "array" types:
          *      string, (u)int, (u)long, (u)short, and byte
+         *      
          *      (Bool will not be supported as it would be redundant to have the library just return true when the switch already specifies it)
-         *  It's "array" because the parameters will not be passed to the method as an array. 
-         *  This does mean that '-2' for the "ValuesAfter" parameter will not work yet. But specifying a number
-         *  and manually adding the parameters will work. See "TypeTest_Helper" for an example.
+         *      
+         *  I say "array", but parameters will not be passed as an array. They will be passed as separate values. Using an array
+         *  just denotes that there will be more than one value passed.
+         *  This sadly means that '-2' for the "ValuesAfter" parameter will not work. But specifying a number
+         *  and manually adding the parameters will work. See "TypeTest_Helper" for an example of this being used.
          */
 
         [CommandArg("--some-str/-s",                // Switch name

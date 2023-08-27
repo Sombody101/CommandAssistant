@@ -18,25 +18,25 @@ public class CommandArgAttribute : Attribute
     /// <param name="switchLabel"></param>
     /// <param name="description"></param>
     /// <param name="argumentHandler"></param>
-    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="InvalidAttributeParameterException"></exception>
     public CommandArgAttribute(string switchLabel, string description, string argumentHandler, int valuesAfter = -1, Type? argumentType = null)
     {
         if (switchLabel is "" or null)
-            throw new ArgumentException("Switch label must have a value (--long-name/-s)");
+            throw new InvalidAttributeParameterException("Switch label must have a value (--long-hand/-s(horthand))");
 
         CommandHelp.SplitString(switchLabel, out string longS, out string shortS);
 
         // Check if the switch has already been added to the list (CommandHelp)
         if (CommandHelp.GetHelpMessage(longS, out _, out _))
-            throw new ArgumentException($"'{longS}' is already being used");
+            throw new InvalidAttributeParameterException($"'{longS}' is already being used");
         if (CommandHelp.GetHelpMessage(shortS, out _, out _))
-            throw new ArgumentException($"'{shortS}' is already being used");
+            throw new InvalidAttributeParameterException($"'{shortS}' is already being used");
 
         if (description is "" or null)
-            throw new ArgumentException("Switch description must have a value");
+            throw new InvalidAttributeParameterException("Switch description must have a value");
 
         if (argumentHandler is "" or null)
-            throw new ArgumentException("Switch argument handler must have a value");
+            throw new InvalidAttributeParameterException("Switch argument handler must have a value");
 
         Switch = switchLabel;
         Description = description;
@@ -232,7 +232,7 @@ public static class ArgumentProcessor
         for (int i = 0; i < attr.Count; i++)
         {
             ActiveFields.Add(attr[i].GetCustomAttribute<CommandArgAttribute>() ??
-                throw new NullReferenceException($"Failed to find CommandArgAttribute in {attr[i].Name}"));
+                throw new MissingSwitchHandlerException($"Failed to find CommandArgAttribute in {attr[i].Name}"));
         }
     }
 }
@@ -248,7 +248,7 @@ public static class CommandHelp
         var sKey = input.Split('/');
 
         if (sKey.Length is > 2)
-            throw new ArgumentException("A switch specifier should only have one '/' to specify the long and shorthand switches");
+            throw new ArgumentException("A switch specifier should only have one '/' to specify the long and shorthand switches (--long-hand/-s(horthand))");
 
         if (sKey.Length is 1)
         {
@@ -454,7 +454,7 @@ internal static class DllUtils
                 Log($"Malformed uint input for '[red]{forArg}[/]'");
         }
         else
-            throw new Exception($"Invalid data type ({T})");
+            throw new UnsuportedDataTypeException($"Invalid data type ({T})");
 
         return output;
     }

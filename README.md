@@ -103,8 +103,8 @@ The ValuesAfter parameter is set to **-1** by default (Disabled), and the type w
 public static class Args
 {
 	[CommandArg("--names/-n", "The names for each table to be presented", nameof(Names_Handler), 
-	/* Number of args after the switch */ 3, 
-	/* What type should be passed to the handler (string array for multiple values) */ typeof(string[]))]
+	3, /* Number of args after the switch */
+	typeof(string[]) /* What type should be passed to the handler (string array for multiple values) */ )]
 	public static string[] Names = false; // Set it to its default value
 
 	public static void Names_Handler(string value1, string value2, string value3) // Matching argument as specified
@@ -116,7 +116,10 @@ public static class Args
 	}
 }
 ```
-> :warning: **Using string[] does not mean a string array will be passed**: 
-Although we're passing a string[], **CommandAssistant** will not pass an array due to 
+> :warning: **Using string[] in the attribute does not mean a string array will be passed**: 
+Although we're passing a string[] to the attribute, **CommandAssistant** will not pass an array to the handler due to 
 data conversion issues. Because of this, we cannot use a dynamic argument count (**-2**) 
 for taking all argument until the next switch.
+
+## Dependencies
+> [Spectre.Console (0.47.0)](https://github.com/spectreconsole/spectre.console)
