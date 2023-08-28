@@ -53,7 +53,7 @@ public class CommandArgAttribute : Attribute
 
 internal class ArgStorage
 {
-    internal ArgStorage(MethodInfo method, Type? type, string[] args, string forArg)
+    internal ArgStorage(MethodInfo method, Type? type, List<string> args, string forArg)
     {
         Method = method;
         Type = type;
@@ -63,7 +63,7 @@ internal class ArgStorage
 
     internal MethodInfo Method { get; private set; }
     internal Type? Type { get; private set; }
-    internal string[] Args { get; private set; }
+    internal List<string> Args { get; private set; }
     internal string ForArg { get; private set; }
 }
 
@@ -147,23 +147,19 @@ public static class ArgumentProcessor
                 if (i + attr.ValuesAfter + 1 > args.Count)
                     DllUtils.Log($"Insufficient argument count for switch '{arg}'", 3);
 
-                string[] readyArgs = Array.Empty<string>();
+                List<string> readyArgs = new();
                 if (attr.ValuesAfter is not -1)
                 {
                     a = args.ToArray();
                     if (attr.ValuesAfter is -2)
                     {
-                        List<string> tmp = new();
                         for (int t = i; t < i; t++)
-                        {
-                            if (!args[x].StartsWith('-')) 
-                                tmp.Add(args[x]);
-                        }
-                        readyArgs = tmp.ToArray();
+                            if (!args[x].StartsWith('-'))
+                                readyArgs.Add(args[x]);
                     }
                     else
-                        readyArgs = a[(i + 1)..(i + attr.ValuesAfter + 1)];
-                    RemArg(readyArgs.Length);
+                        readyArgs = a[(i + 1)..(i + attr.ValuesAfter + 1)].ToList();
+                    RemArg(readyArgs.Count);
                 }
 
                 methodsToInvoke.Add(new(DllUtils.GetMethod(T, attr.StaticArgumentHandlerMethodName), attr.ArgumentType, readyArgs, arg));
@@ -181,6 +177,20 @@ public static class ArgumentProcessor
             return args.ToArray();
         }
 
+        static Array ConvertType(List<string> inputList, Type targetType)
+        {
+            Type elementType = targetType.GetElementType();
+            Array typedArray = Array.CreateInstance(elementType, inputList.Count);
+
+            for (int i = 0; i < inputList.Count; i++)
+            {
+                object convertedValue = Convert.ChangeType(inputList[i], elementType);
+                typedArray.SetValue(convertedValue, i);
+            }
+
+            return typedArray;
+        }
+
         // Method invocation and type handling
         foreach (var AS in methodsToInvoke)
         {
@@ -190,32 +200,10 @@ public static class ArgumentProcessor
             {
                 // Arrays
                 if (AS.Type.IsArray)
-                    if (AS.Type.IsAssignableFrom(AS.Type))
-                    {
-                        try
-                        {
-                            Array typeCastedArray = Array.CreateInstance(AS.Type, AS.Args.Length);
-                            Array.Copy(AS.Args, typeCastedArray, AS.Args.Length);
-                            AS.Method.Invoke(null, new object[] { typeCastedArray });
-                        }
-                        catch
-                        {
-                            List<object> obj = new();
-                            foreach (var item in DllUtils.CastObjects(AS))
-                                obj.Add(item);
-
-                            AS.Method.Invoke(null, obj.ToArray());
-                        }
-                    }
-                    else
-                        AS.Method.Invoke(null, new object[] { DllUtils.CastObjects(AS) });
-                // Non-arrays
+                    AS.Method.Invoke(null, new object[] { ConvertType(AS.Args, AS.Type) });
                 else
                     foreach (string str in AS.Args)
-                        if (AS.Type.IsAssignableFrom(str.GetType()))
-                            AS.Method.Invoke(null, new object[] { Convert.ChangeType(str, AS.Type) });
-                        else
-                            AS.Method.Invoke(null, new object[] { DllUtils.CastObject(AS) });
+                        AS.Method.Invoke(null, new object[] { Convert.ChangeType(str, AS.Type) });
             }
         }
 
@@ -382,81 +370,6 @@ internal static class DllUtils
             AnsiConsole.MarkupLine(line);
         else
             Console.WriteLine(line.EscapeMarkup());
-    }
-
-    internal static object CastObject(ArgStorage AS)
-        => _CastObject(AS.Args[0], AS.Type, AS.ForArg);
-
-    internal static object[] CastObjects(ArgStorage AS)
-    {
-        List<object> obs = new();
-        for (int i = 0; i < AS.Args.Length; i++)
-        {
-            obs.Add(_CastObject(AS.Args[i], AS.Type, AS.ForArg));
-        }
-
-        return obs.ToArray();
-    }
-
-    private static object _CastObject(string a, Type t, string forArg)
-    {
-        object output = new();
-
-        Type? T = t.IsArray ? t.GetElementType() : t;
-
-        if (T == typeof(long))
-        {
-            if (long.TryParse(a, out long l))
-                output = l;
-            else
-                Log($"Malformed long input for '[red]{forArg}[/]'");
-        }
-        else if (T == typeof(ulong))
-        {
-            if (ulong.TryParse(a, out ulong ul))
-                output = ul;
-            else
-                Log($"Malformed ulong input for '[red]{forArg}[/]'");
-        }
-        else if (T == typeof(int))
-        {
-            if (int.TryParse(a, out int i))
-                output = i;
-            else
-                Log($"Malformed int input for '[red]{forArg}[/]'");
-        }
-        else if (T == typeof(uint))
-        {
-            if (int.TryParse(a, out int ui))
-                output = ui;
-            else
-                Log($"Malformed uint input for '[red]{forArg}[/]'");
-        }
-        else if (T == typeof(short))
-        {
-            if (int.TryParse(a, out int s))
-                output = s;
-            else
-                Log($"Malformed uint input for '[red]{forArg}[/]'");
-        }
-        else if (T == typeof(ushort))
-        {
-            if (int.TryParse((string)a, out int us))
-                output = us;
-            else
-                Log($"Malformed uint input for '[red]{forArg}[/]'");
-        }
-        else if (T == typeof(byte))
-        {
-            if (int.TryParse(a, out int b))
-                output = b;
-            else
-                Log($"Malformed uint input for '[red]{forArg}[/]'");
-        }
-        else
-            throw new UnsupportedDataTypeException($"Invalid data type ({T})");
-
-        return output;
     }
 }
 
