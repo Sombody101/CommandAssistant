@@ -30,7 +30,7 @@ public class Args
 	public static bool GetStringsFromPackets = false; // Set it to its default value
 
 	// The return type should remain null as **CommandAssistant** will not do anything with the value(s).
-	public static void GetStringsFromPackets_Handler() // Note: The handler name can be whatever you want
+	public static void GetStringsFromPackets_Handler() 
 	{
 		// Do some checks if needed
 
@@ -38,6 +38,9 @@ public class Args
 	}
 }
 ```
+> [!NOTE]
+> The handler name can be whatever you want. It does not have to be formed `FieldName_Handler`
+
 The class containing the switches doesn't have to be non-static. There are two variations of the parsing method
 to account for that.
 
@@ -93,8 +96,9 @@ public static class Args
 	}
 }
 ```
-
-> :warning: **The CommandArg attribute must match handler**: An exception will be thrown if the argument count or type do not match the handler
+> [!WARNING]
+> **The CommandArg attribute must match handler**: An `InvalidMethodParametersException` will be thrown if the 
+argument does not match what the handler is looking for
 
 The ValuesAfter parameter is set to **-1** by default (Disabled), and the type will remain **null** when unused.
 
@@ -107,19 +111,15 @@ public static class Args
 	typeof(string[]) /* What type should be passed to the handler (string array for multiple values) */ )]
 	public static string[] Names = false; // Set it to its default value
 
-	public static void Names_Handler(string value1, string value2, string value3) // Matching argument as specified
+	public static void Names_Handler(string[] input) // Matching argument as specified
 	{
 		// Do some checks if needed
 
-		Console.WriteLine($"Values passed: {value1}, {value2}, {value3}");
-		Names = new string[] { value1, value2, value3 };
+		Console.WriteLine($"Values passed: {string.Join(", ", input)}");
+		Names = input;
 	}
 }
 ```
-> :warning: **Using string[] in the attribute does not mean a string array will be passed**: 
-Although we're passing a string[] to the attribute, **CommandAssistant** will not pass an array to the handler due to 
-data conversion issues. Because of this, we cannot use a dynamic argument count (**-2**) 
-for taking all argument until the next switch.
 
 ## Dependencies
 > [Spectre.Console (0.47.0)](https://github.com/spectreconsole/spectre.console)

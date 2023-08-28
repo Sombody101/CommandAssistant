@@ -46,15 +46,9 @@ internal class Program
          *  Currently supported argument types:
          *      string, (u)int, (u)long, (u)short, and byte
          *      
-         *  Currently supported "array" types:
-         *      string, (u)int, (u)long, (u)short, and byte
-         *      
-         *      (Bool will not be supported as it would be redundant to have the library just return true when the switch already specifies it)
-         *      
-         *  I say "array", but parameters will not be passed as an array. They will be passed as separate values. Using an array
-         *  just denotes that there will be more than one value passed.
-         *  This sadly means that '-2' for the "ValuesAfter" parameter will not work. But specifying a number
-         *  and manually adding the parameters will work. See "TypeTest_Helper" for an example of this being used.
+         *  Currently supported array types:
+         *      string[], (u)int[], (u)long[], (u)short[], and byte[]
+         *  (Bool will not be supported as a return type. It would be redundant to have the library just return true when the switch already specifies it)
          */
 
         [CommandArg("--some-str/-s",                // Switch name
@@ -81,6 +75,9 @@ internal class Program
             typeof(int[]))]
         public static int TypeTest = 0;
 
+        [CommandArg("--arr-test/-a", "A test on array types", nameof(ArrayTest_Handler), 3, typeof(int[]))]
+        public static bool ArrayTest = false;
+
         // Command handlers
         public static void LStr_Helper(string arg)
         {
@@ -97,10 +94,15 @@ internal class Program
             Console.WriteLine("[METHOD] Solving for LBool2");
         }
 
-        // ValuesAfter: 2
-        public static void TypeTest_Helper(int a, int b)
+        public static void TypeTest_Helper(int[] input)
         {
-            Console.WriteLine($"[METHOD] Solving for TypeTest: {a}, {b}");
+            Console.WriteLine($"[METHOD] Solving for TypeTest: {string.Join(", ", input)}");
+        }
+
+        public static void ArrayTest_Handler(int[] input)
+        {
+            Console.WriteLine($"[METHOD] Solving for ArrayTest: {string.Join(", ", input)}");
+            ArrayTest = true;
         }
     }
 }
