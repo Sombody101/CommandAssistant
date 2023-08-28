@@ -197,8 +197,16 @@ public static class ArgumentProcessor
 
             for (int i = 0; i < inputList.Count; i++)
             {
-                object convertedValue = Convert.ChangeType(inputList[i], elementType);
-                typedArray.SetValue(convertedValue, i);
+                try
+                {
+                    object convertedValue = Convert.ChangeType(inputList[i], elementType);
+                    typedArray.SetValue(convertedValue, i);
+                }
+                catch
+                {
+                    object convertedValue = Convert.ChangeType(ArgConfig.InvokeInvalidNumericValue(inputList[i]), elementType);
+                    typedArray.SetValue(convertedValue, i);
+                }
             }
 
             return typedArray;
@@ -414,6 +422,25 @@ public static class ArgConfig
     /// Meant to be overridden in the application (Allows for different error messages while keeping the input arguments).
     /// </summary>
     public static Action<string, byte, bool, bool> LogFunctionOverride { get; set; } = DefaultLogFunction;
+
+    // Delegates
+    public delegate object InvalidNumericValue(object issueItem);
+
+    // Events
+
+    /// <summary>
+    /// Fired when an input argument cannot be parsed into a numeric value.
+    /// <para>
+    /// Example: "9437623434" -> int (Fires event)
+    /// </para>
+    /// <para>
+    /// Return the corrected value to work with your application.
+    /// </para>
+    /// </summary>
+    /// <param name="issueItem"></param>
+    public static event InvalidNumericValue OnInvalidNumericValue;
+    internal static object InvokeInvalidNumericValue(object issueItem)
+        => OnInvalidNumericValue?.Invoke(issueItem);
 
     // The default function to be used when logging
     private static void DefaultLogFunction(string message, byte severity, bool logAndExit, bool showHelpOnCrash)

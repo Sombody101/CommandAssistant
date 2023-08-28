@@ -16,6 +16,8 @@ internal class Program
         // Change the help message that is presented when args information is listed
         CommandHelp.SetHelpMessage("Usage: <args> <search path>");
 
+        ArgConfig.On
+
 #if USING_STATIC_ARGS
         ArgumentProcessor.ProcessArguments(args, typeof(Args));
 #else
