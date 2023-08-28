@@ -1,5 +1,8 @@
 ﻿using Spectre.Console;
+using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 
 namespace CommandAssistant;
 
@@ -61,10 +64,10 @@ internal class ArgStorage
         ForArg = forArg;
     }
 
-    internal MethodInfo Method { get; private set; }
-    internal Type? Type { get; private set; }
-    internal List<string> Args { get; private set; }
-    internal string ForArg { get; private set; }
+    internal MethodInfo Method  { get; private set; }
+    internal Type? Type         { get; private set; }
+    internal List<string> Args  { get; private set; }
+    internal string ForArg      { get; private set; }
 }
 
 public static class ArgumentProcessor
@@ -78,7 +81,7 @@ public static class ArgumentProcessor
     /// <param name="T"></param>
     /// <returns></returns>
     public static string[] ProcessArguments(string[] args, Type T)
-        => _processArguments(args, T);
+        => _ProcessArguments(args, T);
 
     /// <summary>
     /// Used when the class with argument switches is non static
@@ -87,9 +90,9 @@ public static class ArgumentProcessor
     /// <param name="args"></param>
     /// <returns></returns>
     public static string[] ProcessArguments<T>(string[] args)
-        => _processArguments(args, typeof(T));
+        => _ProcessArguments(args, typeof(T));
 
-    internal static string[] _processArguments(string[] a, Type T)
+    internal static string[] _ProcessArguments(string[] a, Type T)
     {
         RefreshActiveFields(T);
 
@@ -118,6 +121,8 @@ public static class ArgumentProcessor
             //i--;
         }
 
+        HashSet<string> hs = new();
+
         // Start parsing the arguments in args
         for (; i < args.Count; i++)
         {
@@ -127,6 +132,14 @@ public static class ArgumentProcessor
 
             if (!arg.StartsWith('-'))
                 continue;
+
+
+            if (!ArgConfig.AllowDuplicateArgs)
+            {
+                if (hs.Contains(arg))
+                    DllUtils.Log($"Duplicate switch '{arg}'", 3);
+                hs.Add(arg);
+            }
 
             //Console.WriteLine(arg);
             CommandHelp.SwitchExists(arg, out string? swch);
@@ -177,9 +190,9 @@ public static class ArgumentProcessor
             return args.ToArray();
         }
 
-        static Array ConvertType(List<string> inputList, Type targetType)
+        static Array ConvertType(List<string> inputList, Type? targetType)
         {
-            Type elementType = targetType.GetElementType();
+            Type? elementType = targetType.GetElementType();
             Array typedArray = Array.CreateInstance(elementType, inputList.Count);
 
             for (int i = 0; i < inputList.Count; i++)
@@ -378,26 +391,28 @@ public static class ArgConfig
     private static readonly string AppName = Assembly.GetEntryAssembly()?.GetName().Name ?? "app";
 
     /// <summary>
-    /// Specifies for the app to exit after printing help information on a command/switch
+    /// Specifies for the app to exit after printing help information on a command/switch.
     /// </summary>
-    public static bool QuitAfterPrintingHelp = true;
+    public static bool QuitAfterPrintingHelp { get; set; } = true;
 
     /// <summary>
-    /// Specifies for the app to exit after an error
+    /// Specifies for the app to exit after an error.
     /// </summary>
-    public static bool QuitOnError = true;
+    public static bool QuitOnError { get; set; } = true;
 
     /// <summary>
-    /// Specifies for the DLL to print with color (Via Spectre.Console | Otherwise uses System.Console)
+    /// Specifies for the DLL to print with color (Via Spectre.Console | Otherwise uses System.Console).
     /// </summary>
-    public static bool PrintWithColor = true;
+    public static bool PrintWithColor { get; set; } = true;
 
     /// <summary>
-    /// Specifies for the app to allow the same arg multiple times (It will process and run the handler method each time the arg is used)
+    /// Specifies for the app to allow the same arg multiple times (It will process and run the handler method each time the arg is used).
     /// </summary>
-    public static bool AllowMultiArg = true;
+    public static bool AllowDuplicateArgs { get; set; } = true;
 
-    // Meant to be overridden in the application (Allows for different error messages while keeping the input arguments)
+    /// <summary>
+    /// Meant to be overridden in the application (Allows for different error messages while keeping the input arguments).
+    /// </summary>
     public static Action<string, byte, bool, bool> LogFunctionOverride { get; set; } = DefaultLogFunction;
 
     // The default function to be used when logging

@@ -6,13 +6,12 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v7.0": {
-      "CommandAssistantTest/1.0.0": {
+      "CommandAssistant/1.0.0": {
         "dependencies": {
-          "Spectre.Console": "0.47.0",
-          "CommandAssistant": "2.8.28.954"
+          "Spectre.Console": "0.47.0"
         },
         "runtime": {
-          "CommandAssistantTest.dll": {}
+          "CommandAssistant.dll": {}
         }
       },
       "Spectre.Console/0.47.0": {
@@ -26,19 +25,11 @@
           }
         }
       },
-      "System.Memory/4.5.5": {},
-      "CommandAssistant/2.8.28.954": {
-        "runtime": {
-          "CommandAssistant.dll": {
-            "assemblyVersion": "2.8.28.954",
-            "fileVersion": "2.8.28.954"
-          }
-        }
-      }
+      "System.Memory/4.5.5": {}
     }
   },
   "libraries": {
-    "CommandAssistantTest/1.0.0": {
+    "CommandAssistant/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -56,11 +47,6 @@
       "sha512": "sha512-XIWiDvKPXaTveaB7HVganDlOCRoj03l+jrwNvcge/t8vhGYKvqV+dMv6G4SAX2NoNmN0wZfVPTAlFwZcZvVOUw==",
       "path": "system.memory/4.5.5",
       "hashPath": "system.memory.4.5.5.nupkg.sha512"
-    },
-    "CommandAssistant/2.8.28.954": {
-      "type": "reference",
-      "serviceable": false,
-      "sha512": ""
     }
   }
 }

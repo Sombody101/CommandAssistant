@@ -58,21 +58,13 @@ internal class Program
             typeof(string))]                        // Arg type
         public static string LStr = string.Empty;   // Field
 
-        [CommandArg("-b",
-            "This is a test for only shorthand switches",
-            nameof(LBool_Helper))]
+        [CommandArg("-b", "This is a test for only shorthand switches", nameof(LBool_Helper))]
         public static bool LBool = false;
 
-        [CommandArg("--bool-value",
-            "This is a test for only longhand switches",
-            nameof(LBool2_Helper))]
+        [CommandArg("--bool-value", "This is a test for only longhand switches", nameof(LBool2_Helper))]
         public static bool LBool2 = false;
 
-        [CommandArg("--type-test/-T",
-            "This is a type conversion test",
-            nameof(TypeTest_Helper),
-            2,
-            typeof(int[]))]
+        [CommandArg("--type-test/-T", "This is a type conversion test", nameof(TypeTest_Helper), 2, typeof(int[]))]
         public static int TypeTest = 0;
 
         [CommandArg("--arr-test/-a", "A test on array types", nameof(ArrayTest_Handler), 3, typeof(int[]))]
