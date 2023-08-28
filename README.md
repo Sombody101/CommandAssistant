@@ -41,7 +41,8 @@ public class Args
 > [!NOTE]
 > The handler name can be whatever you want. It does not have to be formed `FieldName_Handler`
 
-> Nor does class containing the switches have to be non-static. There are two variations of the parsing method
+> [!NOTE]
+> The class containing the switches doens't have to be non-static. There are two variations of the parsing method
 to account for that.
 
 As of right now, the handler methods are required to be inside the same class as the switches.
